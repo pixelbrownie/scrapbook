@@ -1,1 +1,6 @@
-<p>toast works!</p>
+<div class="toast-container" *ngIf="toastService.toast$ | async as toast" [ngClass]="toast.type">
+  <div class="toast-content">
+    <span class="icon">{{ toast.type === 'success' ? '✨' : toast.type === 'error' ? '❌' : 'ℹ️' }}</span>
+    <span class="message">{{ toast.message }}</span>
+  </div>
+</div>
