@@ -1,0 +1,25 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <h1>welcome back!</h1>
+    <p>login to see your zine collection</p>
+
+    <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+      <div class="form-group">
+        <label for="username">username</label>
+        <input type="text" id="username" name="username" [(ngModel)]="credentials.username" required placeholder="your username">
+      </div>
+
+      <div class="form-group">
+        <label for="password">password</label>
+        <input type="password" id="password" name="password" [(ngModel)]="credentials.password" required placeholder="••••••••">
+      </div>
+
+      <button type="submit" [disabled]="!loginForm.form.valid" class="btn-primary">login</button>
+    </form>
+
+    <div class="auth-footer">
+      <span>new here? </span>
+      <a routerLink="/signup">create an account</a>
+    </div>
+  </div>
+</div>
