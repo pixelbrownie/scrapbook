@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 import cloudinary
 import cloudinary.uploader
 from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 
 from .models import Zine, ZineCell
 from .serializers import ZineSerializer, ZineCreateSerializer, ZineCellSerializer
@@ -82,7 +83,7 @@ class TogglePrivacyView(APIView):
 
 
 class UploadImageView(APIView):
-    """Upload image to Cloudinary and return smart-cropped URL."""
+    """Upload image to local media storage and return URL."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -94,23 +95,9 @@ class UploadImageView(APIView):
             return Response({'error': 'No image provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            cloudinary.config(
-                cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-                api_key=settings.CLOUDINARY_API_KEY,
-                api_secret=settings.CLOUDINARY_API_SECRET,
-            )
-
-            result = cloudinary.uploader.upload(
-                file,
-                folder='pixelbrownie/zines',
-                transformation=[
-                    {'width': 400, 'height': 560, 'crop': 'fill', 'gravity': 'auto'},
-                    {'quality': 'auto', 'fetch_format': 'auto'},
-                ]
-            )
-
-            image_url = result.get('secure_url')
-            public_id = result.get('public_id')
+            fs = FileSystemStorage()
+            filename = fs.save(file.name, file)
+            image_url = request.build_absolute_uri(fs.url(filename))
 
             # Update cell if zine_id and cell_key provided
             if zine_id and cell_key:
@@ -118,14 +105,17 @@ class UploadImageView(APIView):
                     zine = Zine.objects.get(id=zine_id, owner=request.user)
                     cell, _ = ZineCell.objects.get_or_create(zine=zine, cell_key=cell_key)
                     cell.image_url = image_url
-                    cell.cloudinary_public_id = public_id
                     cell.save()
+
+                    if cell_key == 'cover':
+                        zine.cover_image_url = image_url
+                        zine.save()
                 except Zine.DoesNotExist:
                     pass
 
             return Response({
                 'url': image_url,
-                'public_id': public_id,
+                'public_id': filename,
                 'smart_crop_url': image_url,
             })
 

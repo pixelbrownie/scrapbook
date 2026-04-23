@@ -26,79 +26,52 @@ const PAGE_ORDER = ['cover', 'page1', 'page2', 'page3', 'page4', 'page5', 'page6
 
       <!-- 3D Book Scene -->
       <div class="book-scene">
-        <div class="scene-3d" [style.perspective]="'1400px'">
-          <div class="book-wrapper"
-            [style.transform]="bookTransform()"
-            [style.transition]="'transform 0.7s cubic-bezier(0.4,0,0.2,1)'">
-
-            <!-- Cover (front face) -->
-            <div class="face face-front"
-              [style.background-color]="cellBg('cover')"
-              (click)="flipNext()">
-              <img *ngIf="cellImg('cover')" [src]="cellImg('cover')" class="face-img" />
-              <div class="face-title-overlay">
-                <span>{{ zine()!.title }}</span>
-              </div>
-              <div class="flip-hint">Tap to flip →</div>
+        <div class="flip-book" [style.transform]="getFlipbookTransform()">
+          <div class="leaf" *ngFor="let leaf of leaves; let i = index"
+               [style.zIndex]="i < currentLeaf() ? i + 1 : leaves.length - i"
+               [class.flipped]="i < currentLeaf()"
+               (click)="flipLeaf(i)">
+            
+            <div class="page-front" [style.background-color]="cellBg(leaf.front)">
+               <img *ngIf="cellImg(leaf.front)" [src]="cellImg(leaf.front)" class="bpp-image" />
+               <div *ngIf="cellText(leaf.front)" class="bpp-text" [style.color]="cellTextColor(leaf.front)">
+                 {{ cellText(leaf.front) }}
+               </div>
+               <div class="bpp-label" *ngIf="!cellImg(leaf.front) && !cellText(leaf.front)">
+                 {{ leaf.front === 'cover' ? 'Cover' : leaf.front }}
+               </div>
             </div>
 
-            <!-- Spine -->
-            <div class="face face-spine" [style.background-color]="zine()!.theme_color"></div>
-
-            <!-- Back face -->
-            <div class="face face-back" [style.background-color]="cellBg('back')">
-              <img *ngIf="cellImg('back')" [src]="cellImg('back')" class="face-img" />
+            <div class="page-back" [style.background-color]="cellBg(leaf.back)">
+               <img *ngIf="cellImg(leaf.back)" [src]="cellImg(leaf.back)" class="bpp-image" />
+               <div *ngIf="cellText(leaf.back)" class="bpp-text" [style.color]="cellTextColor(leaf.back)">
+                 {{ cellText(leaf.back) }}
+               </div>
+               <div class="bpp-label" *ngIf="!cellImg(leaf.back) && !cellText(leaf.back)">
+                 {{ leaf.back === 'back' ? 'Back' : leaf.back }}
+               </div>
             </div>
 
-            <!-- Top/Bottom edges -->
-            <div class="face face-top"></div>
-            <div class="face face-bottom"></div>
           </div>
         </div>
 
         <!-- Navigation -->
         <div class="viewer-nav">
-          <button class="nav-btn" (click)="flipPrev()" [disabled]="currentIdx() === 0">
+          <button class="nav-btn" (click)="flipBook(-1)" [disabled]="currentLeaf() === 0">
             <span>←</span>
           </button>
           <div class="page-dots">
-            <div *ngFor="let p of PAGE_ORDER; let i = index"
+            <div *ngFor="let leaf of leaves; let i = index"
               class="dot"
-              [class.active]="i === currentIdx()"
-              (click)="goToPage(i)">
+              [class.active]="i === currentLeaf()"
+              (click)="goToLeaf(i)">
             </div>
+            <div class="dot" [class.active]="leaves.length === currentLeaf()" (click)="goToLeaf(leaves.length)"></div>
           </div>
-          <button class="nav-btn" (click)="flipNext()" [disabled]="currentIdx() === PAGE_ORDER.length - 1">
+          <button class="nav-btn" (click)="flipBook(1)" [disabled]="currentLeaf() === leaves.length">
             <span>→</span>
           </button>
         </div>
-      </div>
-
-      <!-- Current page content preview -->
-      <div class="page-preview">
-        <div class="pp-card card"
-          [style.background-color]="cellBg(PAGE_ORDER[currentIdx()])">
-          <img *ngIf="cellImg(PAGE_ORDER[currentIdx()])"
-            [src]="cellImg(PAGE_ORDER[currentIdx()])"
-            class="pp-img" />
-          <div *ngIf="cellText(PAGE_ORDER[currentIdx()])"
-            class="pp-text"
-            [style.color]="cellTextColor(PAGE_ORDER[currentIdx()])">
-            {{ cellText(PAGE_ORDER[currentIdx()]) }}
-          </div>
-          <div *ngIf="!cellImg(PAGE_ORDER[currentIdx()]) && !cellText(PAGE_ORDER[currentIdx()])"
-            class="pp-empty">
-            {{ PAGE_ORDER[currentIdx()] === 'cover' ? '📖 Cover' :
-               PAGE_ORDER[currentIdx()] === 'back' ? '🔙 Back' :
-               '✦ Page ' + currentPageNum() }}
-          </div>
-        </div>
-        <p class="page-label">
-          {{ PAGE_ORDER[currentIdx()] === 'cover' ? 'Cover' :
-             PAGE_ORDER[currentIdx()] === 'back' ? 'Back cover' :
-             'Page ' + currentPageNum() }}
-          <span class="page-counter">{{ currentIdx() + 1 }} / {{ PAGE_ORDER.length }}</span>
-        </p>
       </div>
 
     </div>
@@ -156,104 +129,70 @@ const PAGE_ORDER = ['cover', 'page1', 'page2', 'page3', 'page4', 'page5', 'page6
       align-items: center;
       gap: 32px;
       padding: 20px;
+      width: 100%;
+      perspective: 2000px;
     }
-
-    .scene-3d {
-      perspective: 1400px;
-    }
-
-    .book-wrapper {
-      width: 220px;
-      height: 300px;
+    .flip-book {
+      width: 240px;
+      height: 336px;
       position: relative;
       transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+    }
+    .leaf {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
       cursor: pointer;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
     }
-
-    .face {
+    .leaf.flipped {
+      transform: rotateY(-180deg);
+      box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+    }
+    .page-front, .page-back {
       position: absolute;
+      width: 100%;
+      height: 100%;
       backface-visibility: hidden;
-    }
-
-    .face-front {
-      width: 220px;
-      height: 300px;
-      border-radius: 4px 16px 16px 4px;
-      overflow: hidden;
-      box-shadow: 6px 6px 24px rgba(0,0,0,0.2), -2px 0 8px rgba(0,0,0,0.1);
       display: flex;
-      align-items: flex-end;
-      position: relative;
-    }
-
-    .face-back {
-      width: 220px;
-      height: 300px;
-      border-radius: 4px 16px 16px 4px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(0,0,0,0.1);
       overflow: hidden;
-      box-shadow: 6px 6px 24px rgba(0,0,0,0.2);
+      background: white;
+    }
+    .page-front {
+      border-radius: 2px 8px 8px 2px;
+    }
+    .page-back {
       transform: rotateY(180deg);
+      border-radius: 8px 2px 2px 8px;
     }
-
-    .face-spine {
-      width: 18px;
-      height: 300px;
-      left: -18px;
-      top: 0;
-      border-radius: 4px 0 0 4px;
-      box-shadow: -3px 0 8px rgba(0,0,0,0.15);
-    }
-
-    .face-top {
-      width: 220px;
-      height: 18px;
-      top: 0;
-      left: 0;
-      background: #f0ece0;
-      transform: rotateX(90deg) translateZ(-9px);
-    }
-
-    .face-bottom {
-      width: 220px;
-      height: 18px;
-      bottom: 0;
-      left: 0;
-      background: #f0ece0;
-      transform: rotateX(-90deg) translateZ(-9px);
-    }
-
-    .face-img {
-      position: absolute;
-      inset: 0;
+    .bpp-image {
       width: 100%;
       height: 100%;
       object-fit: cover;
-    }
-
-    .face-title-overlay {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      padding: 12px 16px;
-      background: linear-gradient(transparent, rgba(0,0,0,0.35));
-      font-family: var(--font-heading);
-      font-weight: 700;
-      font-size: 1rem;
-      color: white;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.4);
-    }
-
-    .flip-hint {
       position: absolute;
-      top: 12px;
-      right: 12px;
-      font-size: 0.7rem;
-      color: rgba(255,255,255,0.7);
+      inset: 0;
+    }
+    .bpp-text {
+      font-size: 1.1rem;
+      text-align: center;
+      padding: 24px;
+      z-index: 1;
+    }
+    .bpp-label {
       font-family: var(--font-heading);
-      background: rgba(0,0,0,0.2);
-      padding: 4px 8px;
-      border-radius: 20px;
-      backdrop-filter: blur(4px);
+      font-size: 1.4rem;
+      color: #cbd5e1;
+      z-index: 1;
     }
 
     /* ── Navigation ── */
@@ -261,6 +200,7 @@ const PAGE_ORDER = ['cover', 'page1', 'page2', 'page3', 'page4', 'page5', 'page6
       display: flex;
       align-items: center;
       gap: 20px;
+      margin-top: 20px;
     }
 
     .nav-btn {
@@ -314,66 +254,6 @@ const PAGE_ORDER = ['cover', 'page1', 'page2', 'page3', 'page4', 'page5', 'page6
 
     .dot:hover { background: var(--pink); }
 
-    /* ── Page Preview ── */
-    .page-preview {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 0 24px 48px;
-      width: 100%;
-      max-width: 420px;
-    }
-
-    .pp-card {
-      width: 100%;
-      aspect-ratio: 3/4;
-      position: relative;
-      overflow: hidden;
-      min-height: 280px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .pp-img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .pp-text {
-      position: relative;
-      z-index: 1;
-      font-size: 1.1rem;
-      text-align: center;
-      padding: 24px;
-    }
-
-    .pp-empty {
-      font-family: var(--font-heading);
-      font-size: 1.4rem;
-      color: #cbd5e1;
-    }
-
-    .page-label {
-      font-family: var(--font-heading);
-      font-size: 0.9rem;
-      color: var(--gray);
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .page-counter {
-      font-size: 0.78rem;
-      background: var(--pink-light);
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
-
     /* ── Loading ── */
     .viewer-loading {
       min-height: 100vh;
@@ -421,8 +301,13 @@ const PAGE_ORDER = ['cover', 'page1', 'page2', 'page3', 'page4', 'page5', 'page6
 })
 export class ZineViewerComponent implements OnInit {
   zine = signal<Zine | null>(null);
-  currentIdx = signal(0);
-  PAGE_ORDER = PAGE_ORDER;
+  leaves = [
+    { front: 'cover', back: 'page1' },
+    { front: 'page2', back: 'page3' },
+    { front: 'page4', back: 'page5' },
+    { front: 'page6', back: 'back' }
+  ];
+  currentLeaf = signal(0);
 
   constructor(
     private route: ActivatedRoute,
@@ -455,31 +340,36 @@ export class ZineViewerComponent implements OnInit {
     return this.zine()?.cells?.find(c => c.cell_key === key)?.text_color ?? '#1a1a2e';
   }
 
-  bookTransform(): string {
-    const angle = this.currentIdx() * -22.5;
-    return `rotateY(${angle}deg)`;
+  getFlipbookTransform(): string {
+    if (this.currentLeaf() === 0) return 'translateX(0)';
+    if (this.currentLeaf() === this.leaves.length) return 'translateX(240px)';
+    return 'translateX(120px)';
   }
 
-  flipNext() {
-    if (this.currentIdx() < PAGE_ORDER.length - 1) {
-      this.currentIdx.update(i => i + 1);
+  flipLeaf(index: number) {
+    if (index === this.currentLeaf()) {
+      // Clicked top right, flip to next
+      this.currentLeaf.set(this.currentLeaf() + 1);
+    } else if (index === this.currentLeaf() - 1) {
+      // Clicked top left, unflip
+      this.currentLeaf.set(this.currentLeaf() - 1);
+    } else {
+      if (index > this.currentLeaf()) {
+        this.currentLeaf.set(index + 1);
+      } else {
+        this.currentLeaf.set(index);
+      }
     }
   }
 
-  flipPrev() {
-    if (this.currentIdx() > 0) {
-      this.currentIdx.update(i => i - 1);
-    }
+  flipBook(dir: number) {
+    const next = this.currentLeaf() + dir;
+    if (next < 0 || next > this.leaves.length) return;
+    this.currentLeaf.set(next);
   }
 
-  goToPage(i: number) {
-    this.currentIdx.set(i);
-  }
-
-  currentPageNum(): number {
-    const key = PAGE_ORDER[this.currentIdx()];
-    const match = key.match(/page(\d+)/);
-    return match ? parseInt(match[1]) : 0;
+  goToLeaf(i: number) {
+    this.currentLeaf.set(i);
   }
 
   isOwner(): boolean {

@@ -85,7 +85,7 @@ export const GRID_CELLS = [
         <p class="upload-hint" *ngIf="!folding()">click any cell to upload image</p>
         <p class="upload-hint folding-hint" *ngIf="folding()">folding your zine... ✦</p>
 
-        <div class="grid-wrap" #gridRef id="zine-grid">
+        <div class="grid-wrap" #gridRef id="zine-grid" [class.is-folding]="folding()">
           <div class="zine-grid">
 
             <!-- TOP ROW: pages 4,3,2,1 — rotated 180° -->
@@ -168,47 +168,43 @@ export const GRID_CELLS = [
       <!-- ── BOOK VIEW (post-fold) ── -->
       <div class="book-view" *ngIf="showBook()" [@bookAppear]>
         <h2 class="book-title">{{ zineTitleModel || 'My Zine' }}</h2>
-        <p class="book-hint">Click the arrows to flip pages</p>
+        <p class="book-hint">Click the pages to flip back and forth</p>
 
-        <div class="book-scene" [style.perspective]="'1200px'">
-          <div class="book-3d"
-            [style.transform]="'rotateY(' + bookRotation() + 'deg)'"
-            [style.transition]="'transform 0.6s cubic-bezier(0.4,0,0.2,1)'">
-            <div class="book-cover"
-              [style.background-color]="getCellData('cover')?.bg_color || '#F3B0C3'">
-              <img *ngIf="getCellData('cover')?.image_url" [src]="getCellData('cover')!.image_url" class="book-cover-img" />
-              <div class="book-cover-title">{{ zineTitleModel || 'my zine' }}</div>
-            </div>
-            <div class="book-spine"></div>
-            <div class="book-back" [style.background-color]="getCellData('back')?.bg_color || '#fce4ec'">
-              <img *ngIf="getCellData('back')?.image_url" [src]="getCellData('back')!.image_url" class="book-cover-img" />
+        <div class="book-scene">
+          <div class="flip-book" [style.transform]="getFlipbookTransform()">
+            <div class="leaf" *ngFor="let leaf of leaves; let i = index"
+                 [style.zIndex]="i < currentLeaf() ? i + 1 : leaves.length - i"
+                 [class.flipped]="i < currentLeaf()"
+                 (click)="flipLeaf(i)">
+              
+              <div class="page-front" [style.background-color]="getCellData(leaf.front)?.bg_color || '#fff'">
+                 <img *ngIf="getCellData(leaf.front)?.image_url" [src]="getCellData(leaf.front)!.image_url" class="bpp-image" />
+                 <div *ngIf="getCellData(leaf.front)?.text_content" class="bpp-text" [style.color]="getCellData(leaf.front)?.text_color">
+                   {{ getCellData(leaf.front)?.text_content }}
+                 </div>
+                 <div class="bpp-label" *ngIf="!getCellData(leaf.front)?.image_url && !getCellData(leaf.front)?.text_content">
+                   {{ leaf.front === 'cover' ? 'Cover' : leaf.front }}
+                 </div>
+              </div>
+
+              <div class="page-back" [style.background-color]="getCellData(leaf.back)?.bg_color || '#fff'">
+                 <img *ngIf="getCellData(leaf.back)?.image_url" [src]="getCellData(leaf.back)!.image_url" class="bpp-image" />
+                 <div *ngIf="getCellData(leaf.back)?.text_content" class="bpp-text" [style.color]="getCellData(leaf.back)?.text_color">
+                   {{ getCellData(leaf.back)?.text_content }}
+                 </div>
+                 <div class="bpp-label" *ngIf="!getCellData(leaf.back)?.image_url && !getCellData(leaf.back)?.text_content">
+                   {{ leaf.back === 'back' ? 'Back' : leaf.back }}
+                 </div>
+              </div>
+
             </div>
           </div>
         </div>
 
         <div class="book-controls">
           <button class="btn btn-secondary" (click)="flipBook(-1)">← Prev</button>
-          <span class="page-indicator">Page {{ currentPage() + 1 }} / {{ pageOrder.length }}</span>
+          <span class="page-indicator">Spread {{ currentLeaf() + 1 }} / {{ leaves.length + 1 }}</span>
           <button class="btn btn-secondary" (click)="flipBook(1)">Next →</button>
-        </div>
-
-        <div class="book-page-preview card">
-          <div class="bpp-inner"
-            [style.background-color]="getCellData(pageOrder[currentPage()])?.bg_color || '#fff'">
-            <img
-              *ngIf="getCellData(pageOrder[currentPage()])?.image_url"
-              [src]="getCellData(pageOrder[currentPage()])!.image_url"
-              class="bpp-image"
-            />
-            <div
-              *ngIf="getCellData(pageOrder[currentPage()])?.text_content"
-              class="bpp-text"
-              [style.color]="getCellData(pageOrder[currentPage()])?.text_color"
-            >{{ getCellData(pageOrder[currentPage()])?.text_content }}</div>
-            <div class="bpp-label" *ngIf="!getCellData(pageOrder[currentPage()])?.image_url">
-              {{ pageOrder[currentPage()] === 'cover' ? '📖 Cover' : pageOrder[currentPage()] }}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -348,6 +344,23 @@ export const GRID_CELLS = [
     .grid-wrap {
       width: 100%;
       max-width: 900px;
+    }
+
+    @keyframes nineStepFold {
+      0% { transform: scale(1) rotate(0); }
+      11% { transform: scale(0.9) rotate(0); }
+      22% { transform: scale(0.9) rotateX(45deg); }
+      33% { transform: scale(0.9) rotateX(90deg); }
+      44% { transform: scale(0.9) rotateX(180deg); }
+      55% { transform: scale(0.9) rotateX(180deg) rotateY(45deg); }
+      66% { transform: scale(0.9) rotateX(180deg) rotateY(90deg); }
+      77% { transform: scale(0.9) rotateX(180deg) rotateY(180deg); }
+      88% { transform: scale(0.6) rotateX(180deg) rotateY(180deg); }
+      100% { transform: scale(0) rotateX(180deg) rotateY(180deg); }
+    }
+    .grid-wrap.is-folding {
+      animation: nineStepFold 3.6s forwards ease-in-out;
+      transform-origin: center center;
     }
 
     .zine-grid {
@@ -493,7 +506,7 @@ export const GRID_CELLS = [
       to { transform: rotate(360deg); }
     }
 
-    /* ── Book View ── */
+    /* ── Book View (Flipbook) ── */
     .book-view {
       flex: 1;
       display: flex;
@@ -502,106 +515,63 @@ export const GRID_CELLS = [
       padding: 40px 24px;
       gap: 24px;
     }
-
     .book-title {
       font-size: 2rem;
       font-family: var(--font-heading);
     }
-
     .book-hint {
       color: var(--gray);
       font-size: 0.9rem;
     }
-
     .book-scene {
-      perspective: 1200px;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      perspective: 2000px;
     }
-
-    .book-3d {
-      width: 200px;
-      height: 280px;
+    .flip-book {
+      width: 240px;
+      height: 336px;
       position: relative;
       transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
     }
-
-    .book-cover, .book-back {
+    .leaf {
+      width: 100%;
+      height: 100%;
       position: absolute;
-      width: 200px;
-      height: 280px;
-      border-radius: 4px 12px 12px 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      top: 0;
+      left: 0;
+      transform-origin: left center;
+      transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+      cursor: pointer;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+    .leaf.flipped {
+      transform: rotateY(-180deg);
+      box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+    }
+    .page-front, .page-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
       backface-visibility: hidden;
-      overflow: hidden;
-      box-shadow: var(--shadow-lift);
-    }
-
-    .book-cover {
-      background: var(--pink);
-    }
-
-    .book-back {
-      background: var(--pink-light);
-      transform: rotateY(180deg);
-    }
-
-    .book-spine {
-      position: absolute;
-      left: -14px;
-      width: 14px;
-      height: 280px;
-      background: var(--pink-dark);
-      border-radius: 4px 0 0 4px;
-      transform: rotateY(-90deg) translateZ(-7px);
-    }
-
-    .book-cover-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .book-cover-title {
-      font-family: var(--font-heading);
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--dark);
-      text-align: center;
-      padding: 16px;
-      position: absolute;
-    }
-
-    .book-controls {
       display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-
-    .page-indicator {
-      font-family: var(--font-heading);
-      font-size: 0.9rem;
-      color: var(--gray);
-    }
-
-    .book-page-preview {
-      width: 100%;
-      max-width: 360px;
-      aspect-ratio: 3/4;
-    }
-
-    .bpp-inner {
-      width: 100%;
-      height: 100%;
-      min-height: 300px;
-      display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-radius: var(--radius);
+      border: 1px solid rgba(0,0,0,0.1);
       overflow: hidden;
-      position: relative;
+      background: white;
     }
-
+    .page-front {
+      border-radius: 2px 8px 8px 2px;
+    }
+    .page-back {
+      transform: rotateY(180deg);
+      border-radius: 8px 2px 2px 8px;
+    }
     .bpp-image {
       width: 100%;
       height: 100%;
@@ -609,18 +579,27 @@ export const GRID_CELLS = [
       position: absolute;
       inset: 0;
     }
-
     .bpp-text {
       font-size: 1.1rem;
       text-align: center;
       padding: 24px;
       z-index: 1;
     }
-
     .bpp-label {
       font-family: var(--font-heading);
       font-size: 1.4rem;
       color: #cbd5e1;
+      z-index: 1;
+    }
+    .book-controls {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .page-indicator {
+      font-family: var(--font-heading);
+      font-size: 0.9rem;
+      color: var(--gray);
     }
 
     /* ── Cell Editor Panel ── */
@@ -632,22 +611,24 @@ export const GRID_CELLS = [
       z-index: 500;
       display: flex;
       align-items: center;
-      justify-content: flex-end;
+      justify-content: center;
     }
 
     .cell-panel-inner {
-      width: 340px;
-      height: 100vh;
-      border-radius: 0;
+      width: 360px;
+      max-height: 90vh;
+      border-radius: var(--radius);
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      animation: slideInRight 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      background: white;
     }
 
-    @keyframes slideInRight {
-      from { transform: translateX(100%); }
-      to   { transform: translateX(0); }
+    @keyframes popIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
     }
 
     .cp-header {
@@ -724,13 +705,18 @@ export class EditorComponent implements OnInit {
   cellTextDraft = '';
   folding = signal(false);
   showBook = signal(false);
-  bookRotation = signal(0);
-  currentPage = signal(0);
+  
+  leaves = [
+    { front: 'cover', back: 'page1' },
+    { front: 'page2', back: 'page3' },
+    { front: 'page4', back: 'page5' },
+    { front: 'page6', back: 'back' }
+  ];
+  currentLeaf = signal(0);
   foldStates = signal<Record<string, string>>({});
 
   topRow = GRID_CELLS.filter(c => c.row === 'top');
   bottomRow = GRID_CELLS.filter(c => c.row === 'bottom');
-  pageOrder = ['cover', 'page1', 'page2', 'page3', 'page4', 'page5', 'page6', 'back'];
 
   private textSaveTimer: any;
 
@@ -778,8 +764,12 @@ export class EditorComponent implements OnInit {
   }
 
   onFileSelected(event: Event) {
+    if (!this.zine()) {
+      this.toast.show('Please save your zine first to upload images!', 'info');
+      return;
+    }
     const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file || !this.activeCellKey() || !this.zine()) return;
+    if (!file || !this.activeCellKey()) return;
 
     const cellKey = this.activeCellKey()!;
     this.uploadingCell.set(cellKey);
@@ -802,7 +792,7 @@ export class EditorComponent implements OnInit {
       },
       error: () => {
         this.uploadingCell.set(null);
-        this.toast.show('Upload failed. Check Cloudinary config.', 'error');
+        this.toast.show('Upload failed.', 'error');
       },
     });
   }
@@ -890,45 +880,51 @@ export class EditorComponent implements OnInit {
       return;
     }
     this.folding.set(true);
-    this.toast.show('Folding your zine... ✂️', 'info');
-
-    // Stagger fold columns inward (index 1 and 2 first, then 0 and 3)
-    const delays = [300, 0, 0, 300];
-    const states: Record<string, string> = {};
-    GRID_CELLS.forEach((c, i) => {
-      states[`${c.row}-${i % 4}`] = 'folding';
-    });
-
-    // Animate step by step
-    setTimeout(() => {
-      this.foldStates.set({ ...states });
-    }, 200);
+    this.toast.show('Folding your zine into a book... ✂️', 'info');
 
     setTimeout(() => {
       this.folding.set(false);
       this.showBook.set(true);
-    }, 1200);
+    }, 3600); // 3.6s matches nineStepFold duration
   }
 
   foldState(idx: number, row: 'top' | 'bottom'): string {
-    if (!this.folding()) return 'open';
-    const key = `${row}-${idx}`;
-    return this.foldStates()[key] ?? 'open';
+    // keeping this as it prevents template errors, though nineStepFold handles the main view now
+    return 'open'; 
+  }
+
+  getFlipbookTransform(): string {
+    if (this.currentLeaf() === 0) return 'translateX(0)';
+    if (this.currentLeaf() === this.leaves.length) return 'translateX(240px)';
+    return 'translateX(120px)';
+  }
+
+  flipLeaf(index: number) {
+    if (index === this.currentLeaf()) {
+      // Clicked top right, flip to next
+      this.currentLeaf.set(this.currentLeaf() + 1);
+    } else if (index === this.currentLeaf() - 1) {
+      // Clicked top left, unflip
+      this.currentLeaf.set(this.currentLeaf() - 1);
+    } else {
+      if (index > this.currentLeaf()) {
+        this.currentLeaf.set(index + 1);
+      } else {
+        this.currentLeaf.set(index);
+      }
+    }
   }
 
   flipBook(dir: number) {
-    const next = this.currentPage() + dir;
-    if (next < 0 || next >= this.pageOrder.length) return;
-    this.currentPage.set(next);
-    this.bookRotation.update(r => r + dir * 25);
+    const next = this.currentLeaf() + dir;
+    if (next < 0 || next > this.leaves.length) return;
+    this.currentLeaf.set(next);
   }
 
   resetView() {
     this.showBook.set(false);
     this.folding.set(false);
-    this.foldStates.set({});
-    this.bookRotation.set(0);
-    this.currentPage.set(0);
+    this.currentLeaf.set(0);
   }
 
   exportPdf() {

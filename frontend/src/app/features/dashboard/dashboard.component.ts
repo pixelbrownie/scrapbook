@@ -159,6 +159,12 @@ import { AuthService } from '../../core/services/auth.service';
       text-shadow: 0 1px 4px rgba(0,0,0,0.4);
       background: linear-gradient(transparent, rgba(0,0,0,0.4));
       width: 100%;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .book-body:hover .book-front-title {
+      opacity: 1;
     }
 
     .book-side {
