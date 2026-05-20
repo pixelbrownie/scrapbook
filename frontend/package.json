@@ -2,11 +2,11 @@
   "name": "pixelbrownie-zines",
   "version": "0.0.0",
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve --port 4200",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "ng": "npx --yes @angular/cli",
+    "start": "npx --yes @angular/cli serve --port 4200",
+    "build": "npx --yes @angular/cli build",
+    "watch": "npx --yes @angular/cli build --watch --configuration development",
+    "test": "npx --yes @angular/cli test"
   },
   "private": true,
   "dependencies": {

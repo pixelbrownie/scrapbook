@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: '/api',
+  apiUrl: 'https://make-your-zines.onrender.com/api',
   cloudinaryCloudName: 'your_cloud_name',
 };
