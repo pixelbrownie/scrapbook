@@ -17,9 +17,10 @@ import { AuthService } from '../../core/services/auth.service';
         </a>
 
         <!-- Center links -->
-        <div class="nav-links" *ngIf="auth.isLoggedIn()">
+        <div class="nav-links">
           <a routerLink="/explore" routerLinkActive="active" class="nav-link">Explore</a>
-          <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">Dashboard</a>
+          <a routerLink="/search" routerLinkActive="active" class="nav-link">Search</a>
+          <a *ngIf="auth.isLoggedIn()" routerLink="/dashboard" routerLinkActive="active" class="nav-link">Dashboard</a>
         </div>
 
         <!-- Right actions -->

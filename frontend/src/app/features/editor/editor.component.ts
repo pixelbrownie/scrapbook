@@ -7,8 +7,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   trigger, state, style, animate, transition, keyframes, query, stagger
 } from '@angular/animations';
+import { Observable, of, switchMap } from 'rxjs';
 import { ZineService, Zine, ZineCell } from '../../core/services/zine.service';
 import { ToastService } from '../../core/services/toast.service';
+import { apiErrorMessage } from '../../core/utils/api-error';
 
 /** The 8 cells in grid order, left-to-right, top-row then bottom-row */
 export const GRID_CELLS = [
@@ -764,17 +766,15 @@ export class EditorComponent implements OnInit {
   }
 
   onFileSelected(event: Event) {
-    if (!this.zine()) {
-      this.toast.show('Please save your zine first to upload images!', 'info');
-      return;
-    }
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file || !this.activeCellKey()) return;
 
     const cellKey = this.activeCellKey()!;
     this.uploadingCell.set(cellKey);
 
-    this.zineService.uploadImage(file, this.zine()!.id, cellKey).subscribe({
+    this.ensureZine().pipe(
+      switchMap((zine) => this.zineService.uploadImage(file, zine.id, cellKey)),
+    ).subscribe({
       next: (res) => {
         this.cells.update(arr => {
           const idx = arr.findIndex(c => c.cell_key === cellKey);
@@ -787,13 +787,12 @@ export class EditorComponent implements OnInit {
         });
         this.uploadingCell.set(null);
         this.toast.show('Image uploaded ✦', 'success');
-        // Reset file input
         this.fileInput.nativeElement.value = '';
       },
       error: (err) => {
         this.uploadingCell.set(null);
-        const msg = err.error?.error || 'Upload failed.';
-        this.toast.show(msg, 'error');
+        this.toast.show(apiErrorMessage(err, 'Upload failed.'), 'error');
+        this.fileInput.nativeElement.value = '';
       },
     });
   }
@@ -846,26 +845,40 @@ export class EditorComponent implements OnInit {
           this.saving.set(false);
           this.toast.show('Saved! ♡', 'success');
         },
-        error: () => {
+        error: (err) => {
           this.saving.set(false);
-          this.toast.show('Save failed.', 'error');
+          this.toast.show(apiErrorMessage(err, 'Save failed.'), 'error');
         },
       });
     } else {
-      this.zineService.createZine({ title: this.zineTitleModel }).subscribe({
-        next: (z) => {
-          this.zine.set(z);
-          this.cells.set(z.cells);
+      this.ensureZine().subscribe({
+        next: () => {
           this.saving.set(false);
           this.toast.show('Zine created! ✦', 'success');
-          this.router.navigate(['/editor', z.slug], { replaceUrl: true });
         },
-        error: () => {
+        error: (err) => {
           this.saving.set(false);
-          this.toast.show('Could not create zine.', 'error');
+          this.toast.show(apiErrorMessage(err, 'Could not create zine.'), 'error');
         },
       });
     }
+  }
+
+  /** Create a zine if the editor does not have one yet. */
+  private ensureZine(): Observable<Zine> {
+    const existing = this.zine();
+    if (existing) return of(existing);
+
+    const title = this.zineTitleModel.trim() || 'Untitled Zine';
+    return this.zineService.createZine({ title }).pipe(
+      switchMap((z) => {
+        this.zine.set(z);
+        this.cells.set(z.cells);
+        this.zineTitleModel = z.title;
+        this.router.navigate(['/editor', z.slug], { replaceUrl: true });
+        return of(z);
+      }),
+    );
   }
 
   autoSave() {

@@ -6,14 +6,45 @@ from .models import User
 
 class UserSerializer(serializers.ModelSerializer):
     zine_count = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
+    is_self = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'bio', 'avatar', 'zine_count', 'date_joined']
+        fields = [
+            'id', 'username', 'email', 'bio', 'avatar',
+            'zine_count', 'followers_count', 'following_count',
+            'is_following', 'is_self', 'date_joined',
+        ]
         read_only_fields = ['id', 'date_joined']
 
     def get_zine_count(self, obj):
         return obj.zines.count()
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_following_count(self, obj):
+        return obj.following.count()
+
+    def get_is_following(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated or obj == request.user:
+            return False
+        return obj.followers.filter(pk=request.user.pk).exists()
+
+    def get_is_self(self, obj):
+        request = self.context.get('request')
+        return bool(request and request.user.is_authenticated and obj == request.user)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated or request.user != instance:
+            data.pop('email', None)
+        return data
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -47,7 +78,7 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('User account is disabled.')
         refresh = RefreshToken.for_user(user)
         return {
-            'user': UserSerializer(user).data,
+            'user': UserSerializer(user, context={'request': self.context.get('request')}).data,
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         }

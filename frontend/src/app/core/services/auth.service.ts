@@ -7,10 +7,14 @@ import { environment } from '../../../environments/environment';
 export interface User {
   id: number;
   username: string;
-  email: string;
+  email?: string;
   bio: string;
   avatar: string;
   zine_count: number;
+  followers_count?: number;
+  following_count?: number;
+  is_following?: boolean;
+  is_self?: boolean;
 }
 
 export interface AuthResponse {
@@ -41,12 +45,15 @@ export class AuthService {
     );
   }
 
-  logout() {
+  logout(options?: { returnUrl?: string; reason?: string }) {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_KEY);
     localStorage.removeItem(this.USER_KEY);
     this.currentUser.set(null);
-    this.router.navigate(['/login']);
+    const queryParams: Record<string, string> = {};
+    if (options?.returnUrl) queryParams['returnUrl'] = options.returnUrl;
+    if (options?.reason) queryParams['reason'] = options.reason;
+    this.router.navigate(['/login'], { queryParams });
   }
 
   getToken(): string | null {

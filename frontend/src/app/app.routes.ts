@@ -46,6 +46,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/explore/explore.component').then(m => m.ExploreComponent),
   },
   {
+    path: 'search',
+    loadComponent: () => import('./features/search/search.component').then(m => m.SearchComponent),
+  },
+  {
+    path: 'user/:username',
+    loadComponent: () => import('./features/user-profile/user-profile.component').then(m => m.UserProfileComponent),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

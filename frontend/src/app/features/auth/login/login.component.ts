@@ -1,6 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -121,7 +121,7 @@ import { ToastService } from '../../../core/services/toast.service';
     .auth-footer a:hover { text-decoration: underline; }
   `]
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   loading = signal(false);
 
   form = this.fb.group({
@@ -133,8 +133,15 @@ export class LoginComponent {
     private fb: FormBuilder,
     private auth: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private toast: ToastService,
   ) {}
+
+  ngOnInit() {
+    if (this.route.snapshot.queryParamMap.get('reason') === 'session') {
+      this.toast.show('Your session expired. Please sign in again.', 'info');
+    }
+  }
 
   submit() {
     if (this.form.invalid) return;
@@ -142,7 +149,8 @@ export class LoginComponent {
     this.auth.login(this.form.value as any).subscribe({
       next: () => {
         this.toast.show('Welcome back! ♡', 'success');
-        this.router.navigate(['/dashboard']);
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/dashboard');
       },
       error: (err) => {
         const msg = err?.error?.non_field_errors?.[0] ?? 'Login failed. Please try again.';

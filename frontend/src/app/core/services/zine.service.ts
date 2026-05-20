@@ -45,6 +45,13 @@ export class ZineService {
     return this.http.get<{results: Zine[]}>(`${this.base}/mine/`).pipe(map(res => res.results || (res as any)));
   }
 
+  // Public zines by username
+  getUserPublicZines(username: string) {
+    return this.http.get<{results: Zine[]}>(`${this.base}/user/${username}/`).pipe(
+      map(res => res.results || (res as any)),
+    );
+  }
+
   // Get one
   getZine(slug: string) {
     return this.http.get<Zine>(`${this.base}/${slug}/`);

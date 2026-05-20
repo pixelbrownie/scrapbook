@@ -27,7 +27,7 @@ import { ZineService, Zine } from '../../core/services/zine.service';
             </a>
             <div class="ec-body">
               <div class="ec-meta">
-                <span class="ec-author">{{ zine.owner.username }}</span>
+                <a [routerLink]="['/user', zine.owner.username]" class="ec-author" (click)="$event.stopPropagation()">&#64;{{ zine.owner.username }}</a>
                 <span class="ec-date">{{ zine.created_at | date:'shortDate' }}</span>
               </div>
               <h3>{{ zine.title }}</h3>
@@ -134,7 +134,12 @@ import { ZineService, Zine } from '../../core/services/zine.service';
       margin-bottom: 6px;
     }
 
-    .ec-author { font-weight: 600; color: var(--pink-dark); }
+    .ec-author {
+      font-weight: 600;
+      color: var(--pink-dark);
+      text-decoration: none;
+    }
+    .ec-author:hover { text-decoration: underline; }
 
     .ec-body h3 {
       font-size: 1rem;
